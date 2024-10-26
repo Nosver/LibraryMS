@@ -26,7 +26,7 @@ CREATE TABLE `books` (
   `ISBN` text,
   `author` text,
   `page_number` int,
-  `category` ENUM ('THRILLER', 'MYSTERY', 'SCIFI', 'SPORT', 'PERSONAL_IMPROVEMENT', 'HISTORY', 'COOKING', 'ASTROLOGY', 'PSYCHOLOGY', 'PHILOSOPY', 'RELIGION'),
+  `category` ENUM ('THRILLER', 'MYSTERY', 'SCIFI', 'SPORT', 'PERSONAL_IMPROVEMENT', 'HISTORY', 'COOKING', 'ASTROLOGY', 'PSYCHOLOGY', 'PHILOSOPHY', 'RELIGION'),
   `location` text,
   `is_available` boolean
 );
