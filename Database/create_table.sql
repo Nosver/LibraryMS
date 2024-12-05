@@ -1,7 +1,12 @@
 -- Create tables for the library database MySQL
 
+DROP TABLE IF EXISTS `notifications`;
+DROP TABLE IF EXISTS `transactions`;
+DROP TABLE IF EXISTS `books`;
+DROP TABLE IF EXISTS `users`;
+
 CREATE TABLE `users` (
-  `id` int PRIMARY KEY,
+  `id` int PRIMARY KEY AUTO_INCREMENT,
   `role` ENUM ('CUSTOMER', 'STAFF'),
   `username` text,
   `email` text,
@@ -10,7 +15,7 @@ CREATE TABLE `users` (
 );
 
 CREATE TABLE `transactions` (
-  `id` int PRIMARY KEY,
+  `id` int PRIMARY KEY AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `book_id` int NOT NULL,
   `borrowed_at` timestamp NOT NULL,
@@ -21,7 +26,7 @@ CREATE TABLE `transactions` (
 );
 
 CREATE TABLE `books` (
-  `id` int PRIMARY KEY,
+  `id` int PRIMARY KEY AUTO_INCREMENT,
   `name` text NOT NULL,
   `ISBN` text,
   `author` text,
@@ -32,7 +37,7 @@ CREATE TABLE `books` (
 );
 
 CREATE TABLE `notifications` (
-  `id` int PRIMARY KEY,
+  `id` int PRIMARY KEY AUTO_INCREMENT,
   `book_id` int NOT NULL,
   `user_id` int NOT NULL,
   `created_at` timestamp,
