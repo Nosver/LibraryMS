@@ -20,6 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Hash the password for security
             $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
+            // TODO: Check if: email or ussername already exists.
+
             // Insert user into the database
             $query = "INSERT INTO users (role, username, email, password, verification_url) VALUES (" 
                     . "'" .  $role . "', '" . $username . "', '" . $email . "', '" . "asdasda" . "', '" . $verificationUrl . "');";
