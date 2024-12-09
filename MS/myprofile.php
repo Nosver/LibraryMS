@@ -1,6 +1,8 @@
 <?php
 session_start();
 require 'connect.php';
+$pageTitle = 'Profile';
+require 'header.php';
 
 $error = "";
 $success = "";
