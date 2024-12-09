@@ -5,36 +5,49 @@ require 'connect.php';
 $error = "";
 $success = "";
 
-// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $email = trim($_POST['email']);
     $password = trim($_POST['password']);
-    $role = 'CUSTOMER'; // Default role for new users
-    $verificationUrl = uniqid("verify_", true); // Generate a unique verification URL
+    $role = 'CUSTOMER';
+    $verificationUrl = uniqid("verify_", true);
 
     if (empty($username) || empty($email) || empty($password)) {
         $error = "All fields are required!";
     } else {
         try {
-            // Hash the password for security
+        
             $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
-            // TODO: Check if: email or ussername already exists.
+        
+            $checkQuery = "SELECT COUNT(*) AS count FROM users WHERE email = '" . addslashes($email) . "' OR username = '" . addslashes($username) . "'";
+            $result = myQuery($checkQuery);
 
-            // Insert user into the database
-            $query = "INSERT INTO users (role, username, email, password, verification_url) VALUES (" 
-                    . "'" .  $role . "', '" . $username . "', '" . $email . "', '" . "asdasda" . "', '" . $verificationUrl . "');";
-            $stmt = myQuery($query);
+            if ($result && $row = mysqli_fetch_assoc($result)) {
+                if ($row['count'] > 0) {
+                    $error = "Username or email already exists!";
+                } else {
+                
+                    $insertQuery = "INSERT INTO users (role, username, email, password, verification_url) VALUES ("
+                        . "'" . addslashes($role) . "', "
+                        . "'" . addslashes($username) . "', "
+                        . "'" . addslashes($email) . "', "
+                        . "'" . addslashes($hashedPassword) . "', "
+                        . "'" . addslashes($verificationUrl) . "')";
+                    $insertStmt = myQuery($insertQuery);
 
-            if ($stmt) {
-                $success = "User registered successfully! Verification URL: $verificationUrl";
+                    if ($insertStmt) {
+                        $success = "User registered successfully! Verification URL: $verificationUrl";
+                    } else {
+                        throw new Exception("Failed to insert user into the database.");
+                    }
+                }
             } else {
-                throw new Exception("Unknown error occurred during user registration.");
+                throw new Exception("Failed to check existing users.");
             }
         } catch (Exception $e) {
-            // Display error message if query execution fails
-            $error = "Q: ". $query . " --- Registration failed: " . htmlspecialchars($e->getMessage());
+        
+            $error = "Registration failed: " . htmlspecialchars($e->getMessage());
         }
     }
 }
@@ -45,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <title>Register User</title>
 </head>
 <body class="bg-gray-100 flex items-center justify-center h-screen">
