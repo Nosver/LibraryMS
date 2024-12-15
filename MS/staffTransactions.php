@@ -1,19 +1,21 @@
 <?php
 session_start();
 require 'connect.php';
+$pageTitle = 'Transactions';
+include 'header.php';
 
 $GLOBALS['DEBUG_MODE'] = false;
 $user = $_SESSION['user'];
 
  if (!isset($user['id']) || $user['role'] !== 'STAFF') {
-     header("Location: library/login.php");
+     header("");
      exit();
  }
 
 $filter_state = isset($_GET['filter']) ? $_GET['filter'] : null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    $transaction_id = intval($_GET['transaction_id']);
+    $transaction_id = intval($_POST['transaction_id']);
     $new_state = ($_POST['action'] === 'approve') ? 'APPROVED' : 'REJECTED';
 
     $update_query = "UPDATE transactions SET t_state = '$new_state' WHERE id = $transaction_id";
@@ -93,8 +95,7 @@ $result = myQuery($sql);
                             <button type="submit" name="action" value="approve" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-500">Approve</button>
                             <button type="submit" name="action" value="reject" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-500">Reject</button>
                         </form>
-                    <?php else: ?>
-                        <span class="text-gray-500">N/A</span>
+                    
                     <?php endif; ?>
                 </td>
             </tr>
@@ -108,3 +109,4 @@ $result = myQuery($sql);
 </table>
 </body>
 </html>
+

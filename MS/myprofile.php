@@ -9,9 +9,10 @@ $success = "";
 $user = null;
 $transactions = [];
 $books = [];
+$due_books = [];
 
 if (!isset($_SESSION['user']['id'])) {
-    header("Location: login.php");
+    header("Location: library/login.php");
     exit;
 }
 
@@ -59,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password'])) {
 }
 
 try {
+    // Fetch user details
     $queryUser = "SELECT role, username, email FROM users WHERE id = $userId";
     $resultUser = myQuery($queryUser);
 
@@ -68,6 +70,7 @@ try {
         throw new Exception("Failed to fetch user details.");
     }
 
+    // Fetch transactions
     $queryTransactions = "SELECT t.id, b.name AS book_name, t.borrowed_at, t.due_date, t.return_date, t.t_state 
                           FROM transactions t 
                           JOIN books b ON t.book_id = b.id 
@@ -78,6 +81,7 @@ try {
         $transactions[] = $row;
     }
 
+    // Fetch currently borrowed books
     $queryBooks = "SELECT b.name, b.author, b.location 
                    FROM transactions t 
                    JOIN books b ON t.book_id = b.id 
@@ -86,6 +90,19 @@ try {
 
     while ($resultBooks && $row = mysqli_fetch_assoc($resultBooks)) {
         $books[] = $row;
+    }
+
+    // Fetch due soon books (due in less than 10 days)
+    $queryDueBooks = "SELECT b.name, b.author, t.due_date, DATEDIFF(t.due_date, CURDATE()) AS days_left
+                      FROM transactions t
+                      JOIN books b ON t.book_id = b.id
+                      WHERE t.user_id = $userId 
+                        AND t.return_date IS NULL 
+                        AND t.due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 10 DAY)";
+    $resultDueBooks = myQuery($queryDueBooks);
+
+    while ($resultDueBooks && $row = mysqli_fetch_assoc($resultDueBooks)) {
+        $due_books[] = $row;
     }
 } catch (Exception $e) {
     $error = "Error: " . htmlspecialchars($e->getMessage());
@@ -151,6 +168,35 @@ try {
             <?php endif; ?>
         </div>
 
+        <!-- My Due Books Section -->
+        <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4 text-gray-700">My Due Books (Due within 10 Days)</h2>
+            <?php if (empty($due_books)): ?>
+                <p class="text-gray-500">You have no books due within the next 10 days.</p>
+            <?php else: ?>
+                <table class="w-full table-auto border-collapse">
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="px-4 py-2 border">Book Name</th>
+                            <th class="px-4 py-2 border">Author</th>
+                            <th class="px-4 py-2 border">Due Date</th>
+                            <th class="px-4 py-2 border">Days Left</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($due_books as $book): ?>
+                            <tr class="hover:bg-gray-100">
+                                <td class="px-4 py-2 border"><?= htmlspecialchars($book['name']) ?></td>
+                                <td class="px-4 py-2 border"><?= htmlspecialchars($book['author']) ?></td>
+                                <td class="px-4 py-2 border"><?= htmlspecialchars($book['due_date']) ?></td>
+                                <td class="px-4 py-2 border"><?= htmlspecialchars($book['days_left']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+
         <!-- My Books Section -->
         <div class="bg-white shadow-md rounded-lg p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4 text-gray-700">My Books</h2>
@@ -167,11 +213,6 @@ try {
                     <?php endforeach; ?>
                 </ul>
             <?php endif; ?>
-        </div>
-
-        <!-- Logout Button -->
-        <div class="text-center">
-            <a href="logout.php" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Logout</a>
         </div>
     </div>
 

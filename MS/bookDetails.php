@@ -38,7 +38,7 @@ AND book_id = " . $bookId . " AND sent_at is NULL";
 
 $out= myQuery($IsNotificationRequestedBeforeQry);
 if ($out && mysqli_num_rows($out) > 0) {
-    $IsNotificationRequestedBefore = true;
+        $IsNotificationRequestedBefore = true;
 }
 $IsNotificationRequested=false;
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -117,36 +117,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ?>
 
             <?php if (!$ifBookedByCurrUser && !$IsNotificationRequestedBefore) { ?>
-                <div class="mt-6">
-                    <form method="POST" action="">
-                        <input type="hidden" name="book_id" value="<?php echo $bookId; ?>">
-                        <button
-                                type="submit"
-                                name="action"
-                                value="<?php echo $result['is_available'] == 1 ? 'reserve' : 'notify'; ?>"
-                                class="w-full py-3 rounded-lg text-white font-semibold transition duration-200
+    <div class="mt-6">
+        <form method="POST" action="">
+            <input type="hidden" name="book_id" value="<?php echo $bookId; ?>">
+            <button
+                type="submit"
+                name="action"
+                value="<?php echo $result['is_available'] == 1 ? 'reserve' : 'notify'; ?>"
+                class="w-full py-3 rounded-lg text-white font-semibold transition duration-200 
                     <?php echo $result['is_available'] == 1 ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-500 hover:bg-gray-400'; ?>">
-                            <?php echo $result['is_available'] == 1 ? 'Reserve' : 'Notify me when available'; ?>
-                        </button>
-                    </form>
-                </div>
-            <?php } else if ($ifBookedByCurrUser) { ?>
-                <div class="mt-6">
-                    <button
-                            disabled
-                            class="w-full py-3 rounded-lg text-gray-500 bg-gray-300 cursor-not-allowed font-semibold">
-                        Already Booked
-                    </button>
-                </div>
-            <?php } else if ($IsNotificationRequestedBefore) { ?>
-                <div class="mt-6">
-                    <button
-                            disabled
-                            class="w-full py-3 rounded-lg text-gray-500 bg-gray-300 cursor-not-allowed font-semibold">
-                        You will be notified when book is available
-                    </button>
-                </div>
-            <?php } ?>
+                <?php echo $result['is_available'] == 1 ? 'Reserve' : 'Notify me when available'; ?>
+            </button>
+        </form>
+    </div>
+<?php } else if ($ifBookedByCurrUser) { ?>
+    <div class="mt-6">
+        <button
+            disabled
+            class="w-full py-3 rounded-lg text-gray-500 bg-gray-300 cursor-not-allowed font-semibold">
+            Already Booked
+        </button>
+    </div>
+<?php } else if ($IsNotificationRequestedBefore) { ?>
+    <div class="mt-6">
+        <button
+            disabled
+            class="w-full py-3 rounded-lg text-gray-500 bg-gray-300 cursor-not-allowed font-semibold">
+            You will be notified when book is available
+        </button>
+    </div>
+<?php } ?>
 
 
         </div>

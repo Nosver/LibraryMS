@@ -1,5 +1,7 @@
 <?php
 require 'connect.php';
+$pageTitle = 'Book Catalogue';
+require 'header.php';
 
 $category = isset($_GET['category']) ? $_GET['category'] : '';
 $search = isset($_GET['search']) ? $_GET['search'] : '';
@@ -39,9 +41,9 @@ $category_result = myQuery($category_query);
     <title>Book Catalog</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-white">
+<body class="">
 
-<section class="bg-white">
+<section class="">
     <div class="px-2 mb-12 mx-auto py-8 max-w-4xl">
         <!-- Filter and Search -->
         <form method="GET" action="" class="flex justify-between items-center mb-12">
@@ -90,9 +92,11 @@ $category_result = myQuery($category_query);
                                 <p class="text-sm text-gray-600">-<?php echo htmlspecialchars($row['author']); ?></p>
                             </div>
                             <div class="flex items-center justify-end gap-2 flex-wrap">
-                                <a 
-                                    <?php echo "href='bookDetails.php?book_id=".$row['id']."'"; ?> 
-                                    class="flex items-center gap-1 px-2 py-1 border rounded">
+                                <a
+                                <?php
+                                 echo "href='bookDetails.php?book_id=".$row['id']."'";
+                                ?>
+                                 class="flex items-center gap-1 px-2 py-1 border rounded">
                                     <img src="https://www.svgrepo.com/show/162476/flipkart.svg" class="w-5 h-5" alt="" width="20" height="20">
                                     <span>Details</span>
                                 </a>
