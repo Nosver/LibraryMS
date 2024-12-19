@@ -17,38 +17,58 @@ if (!isset($user['id']) || $user['role'] !== 'STAFF') {
 
 $filter_state = isset($_GET['filter']) ? $_GET['filter'] : null;
 
-function generateEmailContent($user_email, $book_name) {
+function generateEmailContent($book_name, $type) {
+    $titles = [
+        'available' => 'Book Availability Notification',
+        'approved' => 'Book Request Approved',
+        'rejected' => 'Book Request Rejected',
+    ];
+
+    $messages = [
+        'available' => "We are pleased to inform you that the book <strong>'" . htmlspecialchars($book_name) . "'</strong> is now available. Please visit the library to borrow it at your earliest convenience.",
+        'approved' => "We are pleased to inform you that your request for the book <strong>'" . htmlspecialchars($book_name) . "'</strong> has been approved. Please visit the library to borrow the book at your earliest convenience.",
+        'rejected' => "We regret to inform you that your request for the book <strong>'" . htmlspecialchars($book_name) . "'</strong> has been rejected. Please contact the library staff for more details.",
+    ];
+
+    $headerColors = [
+        'available' => '#FFEB3B', // Yellow
+        'approved' => '#4CAF50', // Green
+        'rejected' => '#F44336', // Red
+    ];
+
+    $buttonColors = [
+        'available' => '#FFEB3B', // Yellow
+        'approved' => '#4CAF50', // Green
+        'rejected' => '#F44336', // Red
+    ];
+
+    $title = $titles[$type] ?? 'Notification';
+    $message = $messages[$type] ?? 'No additional information available.';
+    $headerColor = $headerColors[$type] ?? '#000';
+    $buttonColor = $buttonColors[$type] ?? '#000';
+
     return '<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Book Available Notification</title>
+        <title>' . htmlspecialchars($title) . '</title>
     </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+    <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
         <div style="max-width: 600px; margin: 20px auto; background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="text-align: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 20px;">
-                <div style="color: #ef4444; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">NOSVER</div>
-                <h1 style="font-size: 24px; font-weight: 600; color: #333333; margin: 0;">Book Availability Notification</h1>
-            </div>
-            <div style="color: #4b5563; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-                <p>
-                    Hello,<br><br>
-                    We are pleased to inform you that the book <strong style="color: #111827;">"' . htmlspecialchars($book_name) . '"</strong> is now available.
-                    Please visit the library to borrow it at your earliest convenience.
-                </p>
-                <p>Thank you for choosing our library services!</p>
-            </div>
-            <div style="text-align: center; margin-top: 20px;">
-                <a href="http://10.1.7.100:7777/st042.site/library/login.php" 
-                   style="display: inline-block; text-align: center; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: bold; padding: 12px 24px; border-radius: 6px;">
-                   Visit Library Site
-                </a>
-            </div>
+            <h2 style="color: ' . $headerColor . '; text-align: center;">' . htmlspecialchars($title) . '</h2>
+            <p>Dear User,</p>
+            <p>' . $message . '</p>
+            <p style="text-align: center;">
+                <a href="http://10.1.7.100:7777/st042.site/library/login.php" style="padding: 10px 20px; background-color: ' . $buttonColor . '; color: #fff; text-decoration: none; border-radius: 5px;">Visit Library</a>
+            </p>
         </div>
     </body>
     </html>';
 }
+
+
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $transaction_id = intval($_POST['transaction_id']);
@@ -101,6 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             
             if (in_array($new_state, ['RETURNED_GOOD_CONDITION', 'RETURNED_POOR_CONDITION'])) {
+               $update_query1 = "UPDATE books SET is_available = 1 WHERE id = $book_id";
+                $result = myQuery($update_query1);
                 $notification_query = "
                     SELECT n.id AS notification_id, u.email AS user_email 
                     FROM notifications n
@@ -118,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $subject = "Book Available Notification";
                         $message = "The book you requested is now available. Please check the library.";
 
-                        if (sendMail($user_email, $subject, generateEmailContent($user_email, $book_name))) {
+                        if (sendMail($user_email, $subject, generateEmailContent($book_name, 'available'))) {
                             $update_notification_query = "UPDATE notifications SET sent_at = NOW() WHERE id = $notification_id";
                             $update_result = myQuery($update_notification_query);
                             if ($update_result) {
@@ -135,7 +157,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     error_log("No pending notifications for book ID: $book_id");
                     echo "<p>No pending notifications for this book.</p>";
                 }
-            }
+            }else if ($new_state === 'APPROVED') {
+                // Fetch the user email and book name
+                $email_query = "
+                    SELECT u.email AS user_email, b.name AS book_name
+                    FROM transactions t
+                    JOIN users u ON t.user_id = u.id
+                    JOIN books b ON t.book_id = b.id
+                    WHERE t.id = $transaction_id
+                ";
+                $email_result = myQuery($email_query);
+
+                if ($email_result && $email_row = mysqli_fetch_assoc($email_result)) {
+                    $user_email = $email_row['user_email'];
+                    $book_name = $email_row['book_name'];
+
+                    // Generate email content
+                    $subject = "Book Request Approved";
+                    $email_content = generateEmailContent($book_name, 'approved');
+
+                    // Send the email
+                    if (sendMail($user_email, $subject, $email_content)) {
+                        echo "<p>Email notification sent to $user_email.</p>";
+                    } else {
+                        echo "<p>Failed to send email to $user_email.</p>";
+                        error_log("Email sending failed for $user_email (Transaction ID: $transaction_id).");
+                    }
+                } else {
+                    echo "<p>Failed to fetch user email or book name for Transaction ID: $transaction_id.</p>";
+                    error_log("Email or book name not found for Transaction ID: $transaction_id.");
+                }
+        }
+        else if ($new_state === 'REJECTED') {
+                // Fetch the user email and book name
+                $email_query = "
+                    SELECT u.email AS user_email, b.name AS book_name
+                    FROM transactions t
+                    JOIN users u ON t.user_id = u.id
+                    JOIN books b ON t.book_id = b.id
+                    WHERE t.id = $transaction_id
+                ";
+                $email_result = myQuery($email_query);
+
+                if ($email_result && $email_row = mysqli_fetch_assoc($email_result)) {
+                    $user_email = $email_row['user_email'];
+                    $book_name = $email_row['book_name'];
+
+                    // Generate email content
+                    $subject = "Book Request Rejected";
+                    $email_content = generateEmailContent($book_name, 'rejected');
+
+                    // Send the email
+                    if (sendMail($user_email, $subject, $email_content)) {
+                        echo "<p>Email notification sent to $user_email.</p>";
+                    } else {
+                        echo "<p>Failed to send email to $user_email.</p>";
+                        error_log("Email sending failed for $user_email (Transaction ID: $transaction_id).");
+                    }
+                } else {
+                    echo "<p>Failed to fetch user email or book name for Transaction ID: $transaction_id.</p>";
+                    error_log("Email or book name not found for Transaction ID: $transaction_id.");
+                }
+        }
         } else {
             error_log("Transaction ID $transaction_id güncellenemedi.");
             echo "<p>Error updating transaction.</p>";
