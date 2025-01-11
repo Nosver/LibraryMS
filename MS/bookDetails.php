@@ -1,14 +1,16 @@
 <?php
-// TODO: display if notification request is taken before
 session_start();
 require("connect.php");
 require("header.php");
+
+// Ensure a book ID is provided
 if (isset($_GET['book_id'])) {
     $bookId = $_GET['book_id'];
 } else {
-    header("Location: library/login.php"); // Redirect if no book_id
+    die("Book not specified.");
 }
 
+// Fetch book details
 $qry = "SELECT * FROM books WHERE id=" . $bookId;
 $res = myQuery($qry);
 
@@ -18,54 +20,64 @@ if ($res && mysqli_num_rows($res) > 0) {
     die("Book not found");
 }
 
+// Variables for logged-in user actions
 $ifBookedByCurrUser = false;
+$IsNotificationRequestedBefore = false;
+
+// Check if user is logged in
 if (isset($_SESSION['user']['id'])) {
+    $userId = $_SESSION['user']['id'];
+
+    // Check if the book is already reserved by the current user
     $ifBookedByCurrUserQry = "
     SELECT * 
     FROM transactions 
-    WHERE user_id = " . $_SESSION['user']['id'] . " 
-    AND book_id = " . $bookId . " 
+    WHERE user_id = $userId 
+    AND book_id = $bookId 
     AND t_state IN ('APPROVED', 'WAITING_APPROVAL', 'NOT_RETURNED');";
     $r = myQuery($ifBookedByCurrUserQry);
     if ($r && mysqli_num_rows($r) > 0) {
         $ifBookedByCurrUser = true;
     }
-}
-$IsNotificationRequestedBefore=false;
 
-$IsNotificationRequestedBeforeQry="SELECT * FROM notifications WHERE user_id = " . $_SESSION['user']['id'] . " 
-AND book_id = " . $bookId . " AND sent_at is NULL";
-
-$out= myQuery($IsNotificationRequestedBeforeQry);
-if ($out && mysqli_num_rows($out) > 0) {
+    // Check if the user has already requested a notification
+    $IsNotificationRequestedBeforeQry = "
+    SELECT * FROM notifications WHERE user_id = $userId 
+    AND book_id = $bookId AND sent_at IS NULL";
+    $out = myQuery($IsNotificationRequestedBeforeQry);
+    if ($out && mysqli_num_rows($out) > 0) {
         $IsNotificationRequestedBefore = true;
+    }
 }
-$IsNotificationRequested=false;
+
+// Handle actions (POST requests)
+$successMessage = "";
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (!isset($_SESSION['user']['id'])) {
+        header("Location: library/login.php");
+        exit;
+    }
+
     if (isset($_POST['action'], $_POST['book_id'])) {
         $action = $_POST['action'];
         $bookId = intval($_POST['book_id']);
-        if (!isset($_SESSION['user']['id'])) {
-            header("Location: library/login.php");
-            exit;
-        }
-        $id=$_SESSION['user']['id'];
+        $id = $_SESSION['user']['id'];
 
         if ($action === 'reserve') {
             $updateQuery = "UPDATE books SET is_available = 0 WHERE id = $bookId";
             myQuery($updateQuery);
             $insertTransactionQuery = "INSERT INTO `transactions` 
             (`id`, `user_id`, `book_id`, `borrowed_at`, `due_date`, `return_date`, `fine_fee`, `t_state`) 
-             VALUES 
+            VALUES 
             (NULL, '$id', '$bookId', NOW(), DATE_ADD(NOW(), INTERVAL 1 MONTH), NULL, '0', 'WAITING_APPROVAL')";
             myQuery($insertTransactionQuery);
             $ifBookedByCurrUser = true;
-            $successMessage= "<div class='text-green-500 mt-4'>Book reserved successfully!</div>";
+            $successMessage = "<div class='text-green-500 mt-4'>Book reserved successfully!</div>";
         } elseif ($action === 'notify') {
-            $addNotificationQuery="INSERT INTO `notifications` (`id`, `book_id`, `user_id`, `created_at`, `sent_at`) VALUES (NULL, '$bookId', '$id', NOW(), NULL);";
+            $addNotificationQuery = "INSERT INTO `notifications` (`id`, `book_id`, `user_id`, `created_at`, `sent_at`) VALUES (NULL, '$bookId', '$id', NOW(), NULL)";
             myQuery($addNotificationQuery);
-            $IsNotificationRequested=true;
-            $successMessage= "<div class='text-blue-500 mt-4'>You will be notified when the book becomes available.</div>";
+            $IsNotificationRequestedBefore = true;
+            $successMessage = "<div class='text-blue-500 mt-4'>You will be notified when the book becomes available.</div>";
         }
     }
 }
@@ -88,7 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="bg-white p-6 shadow-lg rounded-lg">
             <h2 class="text-3xl font-semibold text-gray-800"><?php echo($result['name']); ?></h2>
             <p class="text-gray-600 text-sm mb-4"><?php echo($result['description']); ?></p>
-
             <div class="mb-4">
                 <span class="font-semibold text-gray-700">Author:</span>
                 <span class="text-gray-600"><?php echo($result['author']); ?></span>
@@ -109,46 +120,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <span class="font-semibold text-gray-700">Category:</span>
                 <span class="text-gray-600"><?php echo($result['category']); ?></span>
             </div>
-            <?php
-            if( $successMessage){
-                echo  $successMessage;
-            }
+            <?php if ($successMessage) echo $successMessage; ?>
 
-            ?>
-
-            <?php if (!$ifBookedByCurrUser && !$IsNotificationRequestedBefore) { ?>
-    <div class="mt-6">
-        <form method="POST" action="">
-            <input type="hidden" name="book_id" value="<?php echo $bookId; ?>">
-            <button
-                type="submit"
-                name="action"
-                value="<?php echo $result['is_available'] == 1 ? 'reserve' : 'notify'; ?>"
-                class="w-full py-3 rounded-lg text-white font-semibold transition duration-200 
-                    <?php echo $result['is_available'] == 1 ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-500 hover:bg-gray-400'; ?>">
-                <?php echo $result['is_available'] == 1 ? 'Reserve' : 'Notify me when available'; ?>
-            </button>
-        </form>
-    </div>
-<?php } else if ($ifBookedByCurrUser) { ?>
-    <div class="mt-6">
-        <button
-            disabled
-            class="w-full py-3 rounded-lg text-gray-500 bg-gray-300 cursor-not-allowed font-semibold">
-            Already Booked
-        </button>
-    </div>
-<?php } else if ($IsNotificationRequestedBefore) { ?>
-    <div class="mt-6">
-        <button
-            disabled
-            class="w-full py-3 rounded-lg text-gray-500 bg-gray-300 cursor-not-allowed font-semibold">
-            You will be notified when book is available
-        </button>
-    </div>
-<?php } ?>
-
-
+            <?php if (isset($_SESSION['user']['id'])) { ?>
+                <?php if (!$ifBookedByCurrUser && !$IsNotificationRequestedBefore) { ?>
+                    <div class="mt-6">
+                        <form method="POST" action="">
+                            <input type="hidden" name="book_id" value="<?php echo $bookId; ?>">
+                            <button
+                                type="submit"
+                                name="action"
+                                value="<?php echo $result['is_available'] == 1 ? 'reserve' : 'notify'; ?>"
+                                class="w-full py-3 rounded-lg text-white font-semibold transition duration-200 
+                                    <?php echo $result['is_available'] == 1 ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-500 hover:bg-gray-400'; ?>">
+                                <?php echo $result['is_available'] == 1 ? 'Reserve' : 'Notify me when available'; ?>
+                            </button>
+                        </form>
+                    </div>
+                <?php } elseif ($ifBookedByCurrUser) { ?>
+                    <div class="mt-6">
+                        <button disabled class="w-full py-3 rounded-lg text-gray-500 bg-gray-300 cursor-not-allowed font-semibold">
+                            Already Booked
+                        </button>
+                    </div>
+                <?php } elseif ($IsNotificationRequestedBefore) { ?>
+                    <div class="mt-6">
+                        <button disabled class="w-full py-3 rounded-lg text-gray-500 bg-gray-300 cursor-not-allowed font-semibold">
+                            You will be notified when book is available
+                        </button>
+                    </div>
+                <?php } ?>
+            <?php } else { ?>
+                <div class="mt-6">
+                    <a href="../library/login.php" class="w-full py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-500 font-semibold text-center block">
+                        Log in to reserve or be notified
+                    </a>
+                </div>
+            <?php } ?>
         </div>
     </div>
 </div>

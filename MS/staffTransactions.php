@@ -10,7 +10,7 @@ $GLOBALS['DEBUG_MODE'] = false;
 $user = $_SESSION['user'];
 
 
-if (!isset($user['id']) || $user['role'] !== 'STAFF') {
+if (!isset($user['id']) || $user['role'] == 'CUSTOMER' ) {
     header("Location: library/login.php");
     exit();
 }
@@ -90,24 +90,24 @@ function sendNotification($new_state, $transaction_id, $book_id, $book_name) {
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['confirm_fee'])) {
-    $confirm_fee = $_POST['confirm_fee'];
-    $transaction_id = intval($_POST['transaction_id']);
-    $book_id=intval($_POST['book_id']);
-    $book_name=$_POST['book_name'];
+                $confirm_fee = $_POST['confirm_fee'];
+                $transaction_id = intval($_POST['transaction_id']);
+                $book_id=intval($_POST['book_id']);
+                $book_name=$_POST['book_name'];
 
-    $new_state = $_POST['new_state'];
+                $new_state = $_POST['new_state'];
 
-    if ($confirm_fee === 'yes') {
-        $updateFeeQry = "UPDATE transactions t set fine_fee=150 WHERE t.id=$transaction_id";
-        myQuery($updateFeeQry);
+                if ($confirm_fee === 'yes') {
+                    $updateFeeQry = "UPDATE transactions t set fine_fee=150 WHERE t.id=$transaction_id";
+                    myQuery($updateFeeQry);
 
-        $update_query = "UPDATE transactions SET t_state = '$new_state' WHERE id = $transaction_id";
-
-        $result = myQuery($update_query);
-        sendNotification($new_state,$transaction_id,$book_id,$book_name);
-    } else {
-        echo "<div class='bg-yellow-100 text-yellow-700 p-4 rounded mt-4'>Transaction update canceled.</div>";
-    }
+                    $update_query = "UPDATE transactions SET t_state = '$new_state' WHERE id = $transaction_id";
+        
+                    $result = myQuery($update_query);
+                    sendNotification($new_state,$transaction_id,$book_id,$book_name);
+                } else {
+                    echo "<div class='bg-yellow-100 text-yellow-700 p-4 rounded mt-4'>Transaction update canceled.</div>";
+                }
 }
 
 function generateEmailContent($book_name, $type)
@@ -233,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             }
 
-
+            
 
         }
 
@@ -286,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 
             } else if ($new_state === 'APPROVED') {
-                // Fetch the user email and book name
+                // Fetch user email and book
                 $email_query = "
                     SELECT u.email AS user_email, b.name AS book_name
                     FROM transactions t
@@ -300,11 +300,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $user_email = $email_row['user_email'];
                     $book_name = $email_row['book_name'];
 
-                    // Generate email content
+                    // Generate email 
                     $subject = "Book Request Approved";
                     $email_content = generateEmailContent($book_name, 'approved');
 
-                    // Send the email
+                    // Send email
                     if (sendMail($user_email, $subject, $email_content)) {
                         echo "<p>Email notification sent to $user_email.</p>";
                     } else {
@@ -316,7 +316,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     error_log("Email or book name not found for Transaction ID: $transaction_id.");
                 }
             } else if ($new_state === 'REJECTED') {
-                // Fetch the user email and book name
+
+                // Fetch user
                 $email_query = "
                     SELECT u.email AS user_email, b.name AS book_name
                     FROM transactions t
@@ -330,11 +331,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $user_email = $email_row['user_email'];
                     $book_name = $email_row['book_name'];
 
-                    // Generate email content
                     $subject = "Book Request Rejected";
                     $email_content = generateEmailContent($book_name, 'rejected');
 
-                    // Send the email
+                    // Send mail
                     if (sendMail($user_email, $subject, $email_content)) {
                         echo "<p>Email notification sent to $user_email.</p>";
                     } else {
@@ -350,17 +350,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
+// Pagination
+$items_per_page = 10;
+$current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($current_page - 1) * $items_per_page;
+$filter_state = isset($_GET['filter']) ? $_GET['filter'] : null;
 
+// SQL query wit pagination
 $sql = "SELECT t.id, u.username, b.name AS book_name, t.borrowed_at, t.due_date, t.t_state 
         FROM transactions t
         JOIN users u ON t.user_id = u.id
         JOIN books b ON t.book_id = b.id";
-
 if ($filter_state) {
     $sql .= " WHERE t.t_state = '$filter_state'";
 }
+$sql .= " LIMIT $items_per_page OFFSET $offset";
 
 $result = myQuery($sql);
+
+$count_sql = "SELECT COUNT(*) AS total FROM transactions t";
+if ($filter_state) {
+    $count_sql .= " WHERE t.t_state = '$filter_state'";
+}
+$count_result = myQuery($count_sql);
+$total_items = $count_result ? mysqli_fetch_assoc($count_result)['total'] : 0;
+$total_pages = ceil($total_items / $items_per_page);
 ?>
 
 <!DOCTYPE html>
@@ -374,6 +388,7 @@ $result = myQuery($sql);
 <body class="bg-gray-100 p-6">
 <h1 class="text-2xl font-bold mb-6">Transactions</h1>
 
+<!-- Filter Form -->
 <form method="GET" action="" class="mb-6">
     <label for="filter" class="block text-gray-700 font-medium mb-2">Filter by State:</label>
     <select name="filter" id="filter" class="border rounded-lg px-4 py-2 mb-4 w-full">
@@ -389,6 +404,7 @@ $result = myQuery($sql);
     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500">Apply Filter</button>
 </form>
 
+<!-- Transactions -->
 <table class="min-w-full divide-y divide-gray-200">
     <thead class="bg-gray-50">
     <tr>
@@ -460,5 +476,15 @@ $result = myQuery($sql);
     <?php endif; ?>
     </tbody>
 </table>
+
+<!-- Pagination -->
+<div class="mt-4">
+    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+        <a href="?page=<?php echo $i; ?>&filter=<?php echo urlencode($filter_state); ?>"
+           class="px-3 py-2 mx-1 <?php echo ($i == $current_page) ? 'bg-blue-600 text-white' : 'bg-gray-200'; ?> rounded">
+            <?php echo $i; ?>
+        </a>
+    <?php endfor; ?>
+</div>
 </body>
 </html>

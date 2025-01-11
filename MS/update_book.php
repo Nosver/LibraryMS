@@ -10,7 +10,7 @@ $success = "";
 $id = $_GET['id'] ?? '';
 
 if ($id) {
-    // Fetch book details from the database
+    
     $query = "SELECT * FROM books WHERE id = $id";
     $result = myQuery($query);
     $book = mysqli_fetch_assoc($result);
@@ -22,10 +22,10 @@ if ($id) {
     $error = "Invalid book ID.";
 }
 
-// Perform update if form is submitted
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'] ?? '';
-    $isbn = $_POST['isbn'] ?? '';
+    $ISBN = $_POST['ISBN'] ?? '';
     $author = $_POST['author'] ?? '';
     $page_number = $_POST['page_number'] ?? null;
     $category = $_POST['category'] ?? '';
@@ -33,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $is_available = isset($_POST['is_available']) ? 1 : 0;
     $description = $_POST['description'] ?? '';
 
-    // File upload handling
-    $img_path = $book['img_path']; // Default to existing image
+    
+    $img_path = $book['img_path']; 
     if (!empty($_FILES['img_path']['name'])) {
         $uploadDir = 'images/';
         $uploadFile = $uploadDir . basename($_FILES['img_path']['name']);
@@ -49,9 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$error) {
         $query = "UPDATE books SET 
                   name = '$name', 
-                  isbn = '$isbn', 
+                  ISBN = '$ISBN', 
                   author = '$author', 
-                  page_number = '$page_number', 
+                  page_number = $page_number, 
                   category = '$category', 
                   location = '$location', 
                   is_available = '$is_available', 
@@ -61,6 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (myQuery($query)) {
             $success = "Book successfully updated.";
+            header("Location: library/staff.php"); 
+            exit;
         } else {
             $error = "An error occurred while updating the book.";
         }
@@ -93,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700">ISBN</label>
-                        <input type="text" name="isbn" value="<?= htmlspecialchars($book['isbn']) ?>" class="w-full px-3 py-2 border rounded">
+                        <input type="text" name="ISBN" value="<?= htmlspecialchars($book['ISBN']) ?>" class="w-full px-3 py-2 border rounded">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700">Author</label>

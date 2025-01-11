@@ -105,11 +105,32 @@ while ($row = mysqli_fetch_assoc($resultBook)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     <title>Staff Management</title>
+    <script>
+        // JavaScript function to toggle the visibility of the "Add New Books" section
+        function toggleForm() {
+            var form = document.getElementById('addBookForm');
+            var button = document.getElementById('toggleButton');
+            if (form.style.display === "none") {
+                form.style.display = "block";
+                button.textContent = "Hide Add New Book Form";
+            } else {
+                form.style.display = "none";
+                button.textContent = "Show Add New Book Form";
+            }
+        }
+    </script>
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto py-12 px-6">
+        <!-- Toggle Button for Add Books Form -->
+        <div class="mb-4">
+            <button id="toggleButton" onclick="toggleForm()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Add Book
+            </button>
+        </div>
+
         <!-- Add Books Section -->
-        <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+        <div id="addBookForm" class="bg-white shadow-md rounded-lg p-6 mb-8" style="display: none;">
             <h2 class="text-3xl font-bold mb-4 text-gray-700">Add New Books</h2>
             <?php if ($error): ?>
                 <p class="text-red-500 text-sm mb-4"><?= $error ?></p>
@@ -143,10 +164,8 @@ while ($row = mysqli_fetch_assoc($resultBook)) {
                         <option value="SPORT">Sport</option>
                         <option value="HISTORY">History</option>
                         <option value="ASTROLOGY">Astrology</option>
-                        <option value="PERSONAL_IMPROVEMENT	">Personel_Improvement</option>
+                        <option value="PERSONAL_IMPROVEMENT	">Personal Improvement</option>
                         <option value="PSYCHOLOGY">Psychology</option>
-                        
-
                     </select>
                 </div>
                 <div class="mb-4">
@@ -203,7 +222,6 @@ while ($row = mysqli_fetch_assoc($resultBook)) {
                                         <input type="hidden" name="id" value="<?= $member['id'] ?>">
                                         <button type="submit" name="delete_book" class="bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded">Delete</button>
                                     </form>
-
                                 </td>
                             </tr>
                         <?php endforeach; ?>
